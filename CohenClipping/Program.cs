@@ -8,71 +8,152 @@ namespace CohenClipping
 {
     internal class Program
     {
-        static void Main(string[] args)
+        public const int INSIDE = 0; // 0000
+        public const int LEFT = 1; // 0001
+        public const int RIGHT = 2; // 0010
+        public const int BOTTOM = 4; // 0100
+        public const int TOP = 8; // 1000
+
+        // Defining x_max, y_max and x_min, y_min for
+        // clipping rectangle. Since diagonal points are
+        // enough to define a rectangle
+        public const int x_max = 10;
+        public const int y_max = 8;
+        public const int x_min = 4;
+        public const int y_min = 4;
+
+        // Function to compute region code for a point(x, y)
+        public static int computeCode(double x, double y)
         {
-            int[] points = window();
-            int[] line = line1();
-            int[] TBRL = Tbrl(line, points);
-            foreach(int i in points)
+            // initialized as being inside
+            int code = INSIDE;
+
+            if (x < x_min) // to the left of rectangle
+                code |= LEFT;
+            else if (x > x_max) // to the right of rectangle
+                code |= RIGHT;
+            if (y < y_min) // below the rectangle
+                code |= BOTTOM;
+            else if (y > y_max) // above the rectangle
+                code |= TOP;
+
+            return code;
+        }
+
+        // Implementing Cohen-Sutherland algorithm
+        // Clipping a line from P1 = (x2, y2) to P2 = (x2, y2)
+        public static void cohenSutherlandClip(double x1, double y1,
+                                 double x2, double y2)
+        {
+            // Compute region codes for P1, P2
+            int code1 = computeCode(x1, y1);
+            int code2 = computeCode(x2, y2);
+
+            // Initialize line as outside the rectangular window
+            bool accept = false;
+
+            while (true)
             {
-                Console.Write(i + " ");
+                if ((code1 == 0) && (code2 == 0))
+                {
+                    // If both endpoints lie within rectangle
+                    accept = true;
+                    break;
+                }
+                else if ((code1 & code2) != 0)
+                {
+                    // If both endpoints are outside rectangle,
+                    // in same region
+                    break;
+                }
+                else
+                {
+                    // Some segment of line lies within the
+                    // rectangle
+                    int code_out;
+                    double x = 0.0;
+                    double y = 0.0;
+
+                    // At least one endpoint is outside the
+                    // rectangle, pick it.
+                    if (code1 != 0)
+                        code_out = code1;
+                    else
+                        code_out = code2;
+
+                    // Find intersection point;
+                    // using formulas y = y1 + slope * (x - x1),
+                    // x = x1 + (1 / slope) * (y - y1)
+                    if ((code_out & TOP) != 0)
+                    {
+                        // point is above the clip rectangle
+                        x = x1 + (x2 - x1) * (y_max - y1) / (y2 - y1);
+                        y = y_max;
+                    }
+                    else if ((code_out & BOTTOM) != 0)
+                    {
+                        // point is below the rectangle
+                        x = x1 + (x2 - x1) * (y_min - y1) / (y2 - y1);
+                        y = y_min;
+                    }
+                    else if ((code_out & RIGHT) != 0)
+                    {
+                        // point is to the right of rectangle
+                        y = y1 + (y2 - y1) * (x_max - x1) / (x2 - x1);
+                        x = x_max;
+                    }
+                    else if ((code_out & LEFT) != 0)
+                    {
+                        // point is to the left of rectangle
+                        y = y1 + (y2 - y1) * (x_min - x1) / (x2 - x1);
+                        x = x_min;
+                    }
+
+                    // Now intersection point x, y is found
+                    // We replace point outside rectangle
+                    // by intersection point
+                    if (code_out == code1)
+                    {
+                        x1 = x;
+                        y1 = y;
+                        code1 = computeCode(x1, y1);
+                    }
+                    else
+                    {
+                        x2 = x;
+                        y2 = y;
+                        code2 = computeCode(x2, y2);
+                    }
+                }
             }
-            Console.WriteLine();
-            foreach (int i in TBRL)
+            if (accept)
             {
-                Console.Write(i + " ");
+                Console.WriteLine("Line accepted from " + x1 + ", "
+                     + y1 + " to " + x2 + ", " + y2);
+                // Here the user can add code to display the rectangle
+                // along with the accepted (portion of) lines
             }
+            else
+                Console.WriteLine("Line rejected");
+        }
+
+        // Driver code
+
+        static public void Main()
+        {
+            // First Line segment
+            // P11 = (5, 5), P12 = (7, 7)
+            cohenSutherlandClip(5, 5, 7, 7);
+
+            // Second Line segment
+            // P21 = (7, 9), P22 = (11, 4)
+            cohenSutherlandClip(7, 9, 11, 4);
+
+            // Third Line segment
+            // P31 = (1, 5), P32 = (4, 1)
+            cohenSutherlandClip(1, 5, 4, 1);
             Console.ReadKey();
-        }
-        static int[] window()
-        {
-            int[] points = new int[4];
-            Console.WriteLine("Enter Xmin for the window :...");
-            points[0] = Convert.ToInt32(Console.ReadLine());
-            Console.WriteLine("Enter Xmax for the window :...");
-            points[1] = Convert.ToInt32(Console.ReadLine());
-            Console.WriteLine("Enter Ymin for the window :...");
-            points[2] = Convert.ToInt32(Console.ReadLine());
-            Console.WriteLine("Enter Ymax for the window :...");
-            points[3] = Convert.ToInt32(Console.ReadLine());
-            return points;
-        }
-        static int[] line1()
-        {
-            int[] linePoint = new int[4];
-            Console.WriteLine("Enter X value for the point 1:...");
-            linePoint[0] = Convert.ToInt32(Console.ReadLine());
-            Console.WriteLine("Enter Y value for the point 1:...");
-            linePoint[1] = Convert.ToInt32(Console.ReadLine());
-            Console.WriteLine("Enter X value for the point 2:...");
-            linePoint[2] = Convert.ToInt32(Console.ReadLine());
-            Console.WriteLine("Enter Y value for the point 2:...");
-            linePoint[3] = Convert.ToInt32(Console.ReadLine());
-            return linePoint;
-        }
-        static int[] Tbrl(int[] line, int[] points) 
-        {
-            int[] TBRL1 = new int[8] { 0, 0, 0, 0 ,0 ,0, 0, 0};
-            
-            if (line[0] < points[0])
-                TBRL1[3] = 1;
-            else if (line[0] > points[1])
-                TBRL1[2] = 1;
-            else if (line[1] < points[2])
-                TBRL1[1] = 1;
-            else if (line[1]  > points[3])
-                TBRL1[0] = 1;
 
-
-            if (line[2] < points[0])
-                TBRL1[7] = 1;
-            else if (line[2] > points[1])
-                TBRL1[6] = 1;
-            else if (line[3] < points[2])
-                TBRL1[5] = 1;
-            else if (line[3]  > points[3])
-                TBRL1[4] = 1;
-            return TBRL1;
         }
     }
 }
